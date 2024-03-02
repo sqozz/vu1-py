@@ -72,7 +72,7 @@ class Dial():
         self._fw_version = s["fw_version"]
         self._hw_version = s["hw_version"]
         self._protocol_version = s["protocol_version"]
-        self._color = Color(*s["backlight"].values())
+        self._color = VUColor(*s["backlight"].values())
         self._image = s["image_file"]
 
     @property
@@ -137,15 +137,41 @@ class Dial():
         file = {'imgfile': (open(new_image, 'rb'))}
         self._server._req(f"{self.uid}/image/set", file, post=True)
 
-class Color():
-    def __init__(self, red, green, blue):
-        self.red = max(0, min(100, red))
-        self.green = max(0, min(100, green))
-        self.blue = max(0, min(100, blue))
-
-    def hsv(self):
-        return colorsys.rgb_to_hsv(self.red, self.green, self.blue)
+class VUColor():
+    def __init__(self, red=0, green=0, blue=0):
+        self._red = max(0, min(100, red))
+        self._green = max(0, min(100, green))
+        self._blue = max(0, min(100, blue))
 
     def __iter__(self):
         for attr in ["red", "green", "blue"]:
-            yield (attr, self.__dict__[attr])
+            yield (attr, self.__dict__[f"_{attr}"])
+
+    def to_rgb(self):
+        return RGBColor(self._red/100, self._green/100, self._blue/100)
+
+    def to_hsv(self):
+        return self.to_rgb().to_hsv()
+
+class RGBColor(VUColor):
+    def __init__(self, red=0.0, green=0.0, blue=0.0):
+        self.red = max(0.0, min(1.0, red))
+        self.green = max(0.0, min(1.0, green))
+        self.blue = max(0.0, min(1.0, blue))
+        super().__init__(int(red*100), int(green*100), int(blue*100))
+
+    def to_hsv(self):
+        h, s, v = colorsys.rgb_to_hsv(self.red, self.green, self.blue)
+        return HSVColor(h, s, v)
+
+class HSVColor(VUColor):
+    def __init__(self, hue=0.0, saturation=0.0, value=0.0):
+        self.hue = max(0.0, min(1.0, hue))
+        self.saturation = max(0.0, min(1.0, saturation))
+        self.value = max(0.0, min(1.0, value))
+        r, g, b = colorsys.hsv_to_rgb(self.hue, self.saturation, self.value)
+        super().__init__(int(r*100), int(g*100), int(b*100))
+
+    def to_rgb(self):
+        r, g, b = colorsys.hsv_to_rgb(self.hue, self.saturation, self.value)
+        return RGBColor(r, g, b)
