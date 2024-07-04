@@ -11,15 +11,18 @@ class DialServer():
         self._base = joinpath(self.url, API_BASE)
         self.key = key
         self._dials = []
+        self.refresh()
         pass
 
-    @property
-    def dials(self):
+    def refresh(self):
         dial_data = self._req("list")
         for d in dial_data:
             dial = Dial(self, d["uid"])
             if not dial in self._dials:
                 self._dials.append(dial)
+
+    @property
+    def dials(self):
         return self._dials
 
     @property
