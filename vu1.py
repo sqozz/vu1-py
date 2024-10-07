@@ -1,9 +1,17 @@
 from os.path import join as joinpath
 import json
+import zlib
 import colorsys
 import requests
 
 API_BASE = "api/v0/dial"
+
+# taken from https://stackoverflow.com/a/2387880
+def file_crc(fileName):
+    prev = 0
+    for eachLine in open(fileName, "rb"):
+        prev = zlib.crc32(eachLine, prev)
+    return "%X"%(prev & 0xFFFFFFFF)
 
 class DialServer():
     def __init__(self, url, key):
@@ -131,14 +139,20 @@ class Dial():
         self._server._req(f"{self.uid}/backlight", dict(new_color))
 
     @property
+    def image_crc(self):
+        crc = self._server._req(f"{self.uid}/image/crc")
+        return crc
+
+    @property
     def image(self):
         self._get_status()
         return self._image
 
     @image.setter
     def image(self, new_image):
-        file = {'imgfile': (open(new_image, 'rb'))}
-        self._server._req(f"{self.uid}/image/set", file, post=True)
+        if file_crc(new_image) != self.image_crc:
+            file = {'imgfile': (open(new_image, 'rb'))}
+            self._server._req(f"{self.uid}/image/set", file, post=True)
 
 class VUColor():
     def __init__(self, red=0, green=0, blue=0):
